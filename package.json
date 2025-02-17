@@ -1,49 +1,39 @@
 {
   "name": "mergemaster",
-  "displayName": "MergeMaster",
-  "description": "Powerful multi-file merger for combining and sharing code snippets",
+  "displayName": "MergeMaster - File Merger",
+  "description": "Combine multiple text/code files into a single organized document with contextual separators",
   "version": "0.0.1",
+  "repository": "https://github.com/tarekbadrsh/mergemaster",
+  "keywords": [
+    "merge",
+    "combine",
+    "files",
+    "productivity"
+  ],
   "engines": {
     "vscode": "^1.94.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "*"
-  ],
+  "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "mergemaster.merge",
-        "title": "Merge Selected Files",
-        "icon": "$(files)"
+        "title": "Merge Selected Files"
       }
     ],
     "menus": {
       "explorer/context": [
         {
           "command": "mergemaster.merge",
-          "group": "2_workspace",
-          "when": "explorerViewletVisible && filesExplorerFocus && !explorerResourceIsFolder"
-        }
-      ]
-    },
-    "viewsContainers": {
-      "activitybar": [
+          "group": "navigation"
+        },
         {
-          "id": "mergemaster",
-          "title": "MergeMaster",
-          "icon": "resources/merge-icon.svg"
-        }
-      ]
-    },
-    "views": {
-      "mergemaster": [
-        {
-          "id": "mergemaster.filesView",
-          "name": "Files to Merge"
+          "command": "mergemaster.merge",
+          "group": "2_workspace"
         }
       ]
     }
