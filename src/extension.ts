@@ -7,4 +7,4 @@ export function activate(context: ExtensionContext) {
 	MergeFilesCommands.register(context);
 }
 
-export function deactivate() { } 
+export function deactivate() { }

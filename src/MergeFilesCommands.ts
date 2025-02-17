@@ -4,11 +4,14 @@ import { promises as fsPromises } from 'fs';
 import { join, relative, basename } from 'path';
 import type { ExtensionContext } from 'vscode';
 import { commands, Uri, workspace, window, FileType } from 'vscode';
+import getGitignoreFilter from './gitignoreFilter';
 
 // Prompt user for output file location
 async function selectOutputLocation(): Promise<string | undefined> {
     const workspaceFolders = workspace.workspaceFolders;
-    if (!workspaceFolders) return undefined;
+    if (!workspaceFolders) {
+        return undefined;
+    }
 
     const result = await window.showSaveDialog({
         defaultUri: Uri.file(join(workspaceFolders[0].uri.fsPath, 'merged_output.txt')),
@@ -142,24 +145,36 @@ async function buildFilesContent(fileSet: Set<string>): Promise<string> {
 
 
 // Merge files after resolving directories recursively
-async function mergeFiles(currentFile: Uri, selectedFiles: Uri[]): Promise<void> {
+async function mergeFiles(currentFile: Uri, selectedFiles: Uri[], respectGitignore: boolean): Promise<void> {
     const outputPath = await selectOutputLocation();
-    if (!outputPath) return;
+    if (!outputPath) {
+        return;
+    }
+
+    const workspaceRoot = workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!workspaceRoot) {
+        throw new Error('No workspace folder found');
+    }
+
+    const gitignoreFilter = await getGitignoreFilter(workspaceRoot, respectGitignore);
 
     const fileSet = new Set<string>();
-
     // Process each selected file/directory
     for (const file of selectedFiles) {
         try {
             // Use workspace.fs.stat to obtain file information because Uri does not have an isFile property
             const stat = await workspace.fs.stat(file);
             if (stat.type === FileType.File) {
-                fileSet.add(file.fsPath);
+                if (gitignoreFilter(file.fsPath)) {
+                    fileSet.add(file.fsPath);
+                }
             } else if (stat.type === FileType.Directory) {
                 // Recursively get all file Uris inside this directory
                 const recursiveFiles = await listFiles(file);
                 for (const file of recursiveFiles) {
-                    fileSet.add(file.fsPath);
+                    if (gitignoreFilter(file.fsPath)) {
+                        fileSet.add(file.fsPath);
+                    }
                 }
             }
         } catch (error) {
@@ -176,7 +191,13 @@ async function mergeFiles(currentFile: Uri, selectedFiles: Uri[]): Promise<void>
 
 namespace MergeFilesCommands {
     export function register(context: ExtensionContext) {
-        context.subscriptions.push(commands.registerCommand('mergemaster.merge', mergeFiles));
+        context.subscriptions.push(
+            commands.registerCommand('mergemaster.merge', async (currentFile: Uri, selectedFiles: Uri[]) => {
+                const config = workspace.getConfiguration('mergemaster');
+                const respectGitignore = config.get<boolean>('respectGitignore', true);
+                await mergeFiles(currentFile, selectedFiles, respectGitignore);
+            })
+        );
     }
 }
 

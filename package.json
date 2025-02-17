@@ -36,6 +36,16 @@
           "group": "2_workspace"
         }
       ]
+    },
+    "configuration": {
+      "title": "MergeMaster",
+      "properties": {
+        "mergemaster.respectGitignore": {
+          "type": "boolean",
+          "default": true,
+          "description": "Respect .gitignore rules when merging files"
+        }
+      }
     }
   },
   "scripts": {
@@ -45,6 +55,9 @@
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
     "test": "vscode-test"
+  },
+  "dependencies": {
+    "ignore": "^5.2.4"
   },
   "devDependencies": {
     "@types/vscode": "^1.97.0",
