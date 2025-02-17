@@ -22,7 +22,11 @@
     "commands": [
       {
         "command": "mergemaster.merge",
-        "title": "Merge Selected Files"
+        "title": "Export Selected Files"
+      },
+      {
+        "command": "mergemaster.copyContent",
+        "title": "Copy Selected Files"
       }
     ],
     "menus": {
@@ -33,6 +37,14 @@
         },
         {
           "command": "mergemaster.merge",
+          "group": "2_workspace"
+        },
+        {
+          "command": "mergemaster.copyContent",
+          "group": "navigation"
+        },
+        {
+          "command": "mergemaster.copyContent",
           "group": "2_workspace"
         }
       ]

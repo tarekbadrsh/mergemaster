@@ -1,12 +1,23 @@
 // /src/MergeFilesCommands.ts
 
+/**
+ * Core functionality for the MergeMaster VS Code extension.
+ * This module handles file selection, content merging, and output generation.
+ * It provides the main command implementation for merging multiple files into a single document.
+ */
+
 import { promises as fsPromises } from 'fs';
 import { join, relative, basename } from 'path';
 import type { ExtensionContext } from 'vscode';
-import { commands, Uri, workspace, window, FileType } from 'vscode';
+import { commands, Uri, workspace, window, FileType, env } from 'vscode';
 import getGitignoreFilter from './gitignoreFilter';
 
-// Prompt user for output file location
+/**
+ * Prompts the user to select a location for the merged output file.
+ * Opens a save dialog with default settings for text files.
+ * 
+ * @returns Promise resolving to the selected file path or undefined if cancelled
+ */
 async function selectOutputLocation(): Promise<string | undefined> {
     const workspaceFolders = workspace.workspaceFolders;
     if (!workspaceFolders) {
@@ -24,7 +35,13 @@ async function selectOutputLocation(): Promise<string | undefined> {
     return result?.fsPath;
 }
 
-// Recursive helper to list all files inside a directory
+/**
+ * Recursively lists all files within a directory.
+ * Traverses subdirectories and collects all file URIs.
+ * 
+ * @param uri - The URI of the directory to scan
+ * @returns Promise resolving to an array of file URIs
+ */
 async function listFiles(uri: Uri): Promise<Uri[]> {
     const uris: Uri[] = [];
     try {
@@ -47,6 +64,13 @@ async function listFiles(uri: Uri): Promise<Uri[]> {
 }
 
 
+/**
+ * Builds a tree representation of the selected files.
+ * Creates a visual directory structure using ASCII characters.
+ * 
+ * @param fileSet - Set of file paths to include in the tree
+ * @returns Promise resolving to a string containing the ASCII tree representation
+ */
 async function buildTreeFromRoot(fileSet: Set<string>): Promise<string> {
     // Convert file paths into relative paths with the workspace root name
     const relativePaths = new Set<string>();
@@ -122,6 +146,13 @@ async function buildTreeFromRoot(fileSet: Set<string>): Promise<string> {
 }
 
 
+/**
+ * Builds the merged content from all selected files.
+ * Adds file headers and separators between file contents.
+ * 
+ * @param fileSet - Set of file paths to merge
+ * @returns Promise resolving to the merged content string
+ */
 async function buildFilesContent(fileSet: Set<string>): Promise<string> {
     let mergedContent = '';
     for (const path of fileSet) {
@@ -144,18 +175,21 @@ async function buildFilesContent(fileSet: Set<string>): Promise<string> {
 }
 
 
-// Merge files after resolving directories recursively
-async function mergeFiles(currentFile: Uri, selectedFiles: Uri[], respectGitignore: boolean): Promise<void> {
-    const outputPath = await selectOutputLocation();
-    if (!outputPath) {
-        return;
-    }
-
+/**
+ * Retrieves and processes the content of all selected files.
+ * Handles both individual files and directories recursively.
+ * Applies gitignore filtering if enabled.
+ * 
+ * @param currentFile - The currently active file URI
+ * @param selectedFiles - Array of selected file/directory URIs
+ * @param respectGitignore - Whether to respect .gitignore rules
+ * @returns Promise resolving to the final merged content
+ */
+async function getFilesContent(currentFile: Uri, selectedFiles: Uri[], respectGitignore: boolean): Promise<string> {
     const workspaceRoot = workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceRoot) {
         throw new Error('No workspace folder found');
     }
-
     const gitignoreFilter = await getGitignoreFilter(workspaceRoot, respectGitignore);
 
     const fileSet = new Set<string>();
@@ -186,16 +220,66 @@ async function mergeFiles(currentFile: Uri, selectedFiles: Uri[], respectGitigno
     const treeContent = await buildTreeFromRoot(fileSet);
     const mergedContent = await buildFilesContent(fileSet);
     const finalContent = `${treeContent}\n\n\n${mergedContent}`;
-    await fsPromises.writeFile(outputPath, finalContent);
+
+    return finalContent;
+    // await fsPromises.writeFile(outputPath, finalContent);
 }
 
+/**
+ * Exports selected files to a single merged text file.
+ * Handles the entire process from file selection to content generation and saving.
+ * 
+ * @param currentFile - The currently active file URI
+ * @param selectedFiles - Array of selected file/directory URIs
+ * @param respectGitignore - Whether to respect .gitignore rules
+ * @returns Promise that resolves when the export is complete
+ */
+async function ExportFiles(currentFile: Uri, selectedFiles: Uri[], respectGitignore: boolean): Promise<void> {
+    try {
+        const outputPath = await selectOutputLocation();
+        if (!outputPath) {
+            return;
+        }
+        const finalContent = await getFilesContent(currentFile, selectedFiles, respectGitignore);
+        await fsPromises.writeFile(outputPath, finalContent);
+    } catch (err) {
+        console.error(`Error reading file ${err}`);
+        throw err;
+    }
+}
+
+// Get content of a single file as string
+async function CopyFiles(currentFile: Uri, selectedFiles: Uri[], respectGitignore: boolean): Promise<void> {
+    try {
+        const finalContent = await getFilesContent(currentFile, selectedFiles, respectGitignore);
+        await env.clipboard.writeText(finalContent);
+        window.showInformationMessage(`Selected Files Content copied to clipboard`);
+    } catch (err) {
+        console.error(`Error reading file ${err}`);
+        throw err;
+    }
+}
+
+/**
+ * Namespace containing the command registration and implementation for the MergeMaster extension.
+ */
 namespace MergeFilesCommands {
     export function register(context: ExtensionContext) {
+        // Register merge command
         context.subscriptions.push(
             commands.registerCommand('mergemaster.merge', async (currentFile: Uri, selectedFiles: Uri[]) => {
                 const config = workspace.getConfiguration('mergemaster');
                 const respectGitignore = config.get<boolean>('respectGitignore', true);
-                await mergeFiles(currentFile, selectedFiles, respectGitignore);
+                await ExportFiles(currentFile, selectedFiles, respectGitignore);
+            })
+        );
+
+        // Register copy content command
+        context.subscriptions.push(
+            commands.registerCommand('mergemaster.copyContent', async (currentFile: Uri, selectedFiles: Uri[]) => {
+                const config = workspace.getConfiguration('mergemaster');
+                const respectGitignore = config.get<boolean>('respectGitignore', true);
+                await CopyFiles(currentFile, selectedFiles, respectGitignore);
             })
         );
     }
