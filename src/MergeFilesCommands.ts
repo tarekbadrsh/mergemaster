@@ -43,36 +43,92 @@ async function listFiles(uri: Uri): Promise<Uri[]> {
     return uris;
 }
 
-// Merge files after resolving directories recursively
-async function mergeFiles(currentFile: Uri, selectedFiles: Uri[]): Promise<void> {
-    const outputPath = await selectOutputLocation();
-    if (!outputPath) return;
 
-    let mergedContent = '';
-    const fileUris: Uri[] = [];
+async function buildTreeFromRoot(fileSet: Set<string>): Promise<string> {
+    // Convert file paths into relative paths with the workspace root name
+    const relativePaths = new Set<string>();
+    for (const path of fileSet) {
+        const workspaceRoot = workspace.workspaceFolders?.[0]?.uri.fsPath;
+        let relativePath = workspaceRoot ? relative(workspaceRoot, path) : basename(path);
+        if (workspaceRoot) {
+            const rootName = basename(workspaceRoot);
+            relativePath = `${rootName}/${relativePath}`;
+        }
+        relativePaths.add(relativePath);
+    }
 
-    // Process each selected file/directory
-    for (const file of selectedFiles) {
-        try {
-            // Use workspace.fs.stat to obtain file information because Uri does not have an isFile property
-            const stat = await workspace.fs.stat(file);
-            if (stat.type === FileType.File) {
-                fileUris.push(file);
-            } else if (stat.type === FileType.Directory) {
-                // Recursively get all file Uris inside this directory
-                const recursiveFiles = await listFiles(file);
-                fileUris.push(...recursiveFiles);
+    // Define a tree node with a name, a Map for children nodes, and a flag for files.
+    interface TreeNode {
+        name: string;
+        children: Map<string, TreeNode>;
+        isFile: boolean;
+    }
+
+    // Create a dummy root node.
+    const tree: TreeNode = { name: "", children: new Map(), isFile: false };
+
+    // Build the tree by splitting each relative path and inserting each segment.
+    for (const fullPath of relativePaths) {
+        const parts = fullPath.split('/');
+        let currentNode = tree;
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const isFile = i === parts.length - 1; // last segment is the file name
+            if (!currentNode.children.has(part)) {
+                currentNode.children.set(part, { name: part, children: new Map(), isFile });
             }
-        } catch (error) {
-            console.error(`Error processing ${file.fsPath}: ${error}`);
+            currentNode = currentNode.children.get(part)!;
         }
     }
 
-    // Iterate over each file Uri and append its content to mergedContent
-    for (const fileUri of fileUris) {
-        const content = await fsPromises.readFile(fileUri.fsPath, 'utf8');
+    // Recursively render the tree using the standard tree branch markers.
+    function renderTree(node: TreeNode, prefix: string): string {
+        let output = "";
+        // Sort keys alphabetically.
+        const children = Array.from(node.children.values()).sort((a, b) => a.name.localeCompare(b.name));
+        children.forEach((child, index) => {
+            const isLast = index === children.length - 1;
+            const connector = isLast ? "└── " : "├── ";
+            if (child.children.size > 0 && !child.isFile) {
+                // Append a '/' to directory names.
+                output += `${prefix}${connector}${child.name}/\n`;
+                // Adjust the prefix for subsequent levels.
+                const nextPrefix = prefix + (isLast ? "    " : "│   ");
+                output += renderTree(child, nextPrefix);
+            } else {
+                output += `${prefix}${connector}${child.name}\n`;
+            }
+        });
+        return output;
+    }
+
+    // Assume a single common root if available, otherwise list roots individually.
+    let treeResult = "";
+    const rootNodes = Array.from(tree.children.values()).sort((a, b) => a.name.localeCompare(b.name));
+    if (rootNodes.length === 1) {
+        treeResult += `${rootNodes[0].name}/\n`;
+        treeResult += renderTree(rootNodes[0], "");
+    } else {
+        rootNodes.forEach((node) => {
+            treeResult += `${node.name}${node.children.size > 0 && !node.isFile ? "/" : ""}\n`;
+            treeResult += renderTree(node, "");
+        });
+    }
+
+    return treeResult;
+}
+
+
+async function buildFilesContent(fileSet: Set<string>): Promise<string> {
+    let mergedContent = '';
+    for (const path of fileSet) {
+        const content = await fsPromises.readFile(path, 'utf8');
         const workspaceRoot = workspace.workspaceFolders?.[0]?.uri.fsPath;
-        const relativePath = workspaceRoot ? relative(workspaceRoot, fileUri.fsPath) : basename(fileUri.fsPath);
+        let relativePath = workspaceRoot ? relative(workspaceRoot, path) : basename(path);
+        if (workspaceRoot) {
+            const rootName = basename(workspaceRoot);
+            relativePath = `${rootName}/${relativePath}`;
+        }
         mergedContent += `\n${'='.repeat(50)}\n`;
         mergedContent += `<--- Start-File: ${relativePath} --->\n`;
         mergedContent += `${'='.repeat(50)}\n\n`;
@@ -81,8 +137,41 @@ async function mergeFiles(currentFile: Uri, selectedFiles: Uri[]): Promise<void>
         mergedContent += `<--- End-File: ${relativePath} --->\n`;
         mergedContent += `${'='.repeat(50)}\n`;
     }
+    return mergedContent;
+}
 
-    await fsPromises.writeFile(outputPath, mergedContent);
+
+// Merge files after resolving directories recursively
+async function mergeFiles(currentFile: Uri, selectedFiles: Uri[]): Promise<void> {
+    const outputPath = await selectOutputLocation();
+    if (!outputPath) return;
+
+    const fileSet = new Set<string>();
+
+    // Process each selected file/directory
+    for (const file of selectedFiles) {
+        try {
+            // Use workspace.fs.stat to obtain file information because Uri does not have an isFile property
+            const stat = await workspace.fs.stat(file);
+            if (stat.type === FileType.File) {
+                fileSet.add(file.fsPath);
+            } else if (stat.type === FileType.Directory) {
+                // Recursively get all file Uris inside this directory
+                const recursiveFiles = await listFiles(file);
+                for (const file of recursiveFiles) {
+                    fileSet.add(file.fsPath);
+                }
+            }
+        } catch (error) {
+            console.error(`Error processing ${file.fsPath}: ${error}`);
+        }
+    }
+
+    // Build final content with tree structure
+    const treeContent = await buildTreeFromRoot(fileSet);
+    const mergedContent = await buildFilesContent(fileSet);
+    const finalContent = `${treeContent}\n\n\n${mergedContent}`;
+    await fsPromises.writeFile(outputPath, finalContent);
 }
 
 namespace MergeFilesCommands {

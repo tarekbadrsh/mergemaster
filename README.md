@@ -21,13 +21,25 @@ Merge multiple code/text files into a single organized document with contextual 
 6. Get single file with format:
 
 ```txt
-// File: file1.js
-...original content...
-// End of file1.js
+==================================================
+<--- Start-File: file1.js --->
+==================================================
 
-// File: file2.py
 ...original content...
-// End of file2.py
+
+==================================================
+<--- End-File: file1.js --->
+==================================================
+
+==================================================
+<--- Start-File: file2.py --->
+==================================================
+
+...original content...
+
+==================================================
+<--- End-File: file2.py --->
+==================================================
 ```
 
 ## Requirements
