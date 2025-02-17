@@ -4,20 +4,49 @@
   "description": "Powerful multi-file merger for combining and sharing code snippets",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.97.0"
+    "vscode": "^1.94.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "*"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "mergemaster.helloWorld",
-        "title": "Hello World"
+        "command": "mergemaster.merge",
+        "title": "Merge Selected Files",
+        "icon": "$(files)"
       }
-    ]
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "mergemaster.merge",
+          "group": "2_workspace",
+          "when": "explorerViewletVisible && filesExplorerFocus && !explorerResourceIsFolder"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mergemaster",
+          "title": "MergeMaster",
+          "icon": "resources/merge-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "mergemaster": [
+        {
+          "id": "mergemaster.filesView",
+          "name": "Files to Merge"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
