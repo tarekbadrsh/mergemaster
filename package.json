@@ -2,8 +2,14 @@
   "name": "mergemaster",
   "displayName": "MergeMaster - File Merger",
   "description": "Combine multiple text/code files into a single organized document with contextual separators",
-  "version": "0.0.1",
-  "repository": "https://github.com/tarekbadrsh/mergemaster",
+  "version": "1.0.0",
+  "publisher": "tarekbadrsh",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tarekbadrsh/mergemaster"
+  },
+  "qna": "https://github.com/tarekbadrsh/mergemaster/issues",
   "keywords": [
     "merge",
     "combine",
@@ -14,7 +20,9 @@
     "vscode": "^1.94.0"
   },
   "categories": [
-    "Other"
+    "Snippets",
+    "Formatters",
+    "SCM Providers"
   ],
   "activationEvents": [],
   "main": "./out/extension.js",
