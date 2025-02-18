@@ -129,7 +129,7 @@ Please follow the existing code style and add appropriate tests.
 
 ## Release Notes
 
-### 1.0.0
+### 1.0.1
 
 Initial release with core merging capability:
 

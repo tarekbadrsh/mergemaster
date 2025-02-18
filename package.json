@@ -2,7 +2,7 @@
   "name": "mergemaster",
   "displayName": "MergeMaster - File Merger",
   "description": "Combine multiple text/code files into a single organized document with contextual separators",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "tarekbadrsh",
   "license": "MIT",
   "repository": {
@@ -80,7 +80,7 @@
     "ignore": "^5.2.4"
   },
   "devDependencies": {
-    "@types/vscode": "^1.97.0",
+    "@types/vscode": "^1.94.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
     "@typescript-eslint/eslint-plugin": "^8.22.0",
