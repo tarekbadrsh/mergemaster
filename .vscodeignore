@@ -9,3 +9,7 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+.DS_Store
+
+# Explicitly include images
+!images/**

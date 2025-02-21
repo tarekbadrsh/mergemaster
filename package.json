@@ -2,9 +2,10 @@
   "name": "mergemaster",
   "displayName": "MergeMaster - File Merger",
   "description": "Combine multiple text/code files into a single organized document with contextual separators",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "tarekbadrsh",
   "license": "MIT",
+  "icon": "images/logo.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/tarekbadrsh/mergemaster"
@@ -71,6 +72,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
+    "package": "vsce package",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
